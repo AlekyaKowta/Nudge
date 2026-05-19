@@ -16,7 +16,10 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              secure: process.env.NODE_ENV === 'production',
+            })
           )
         },
       },
@@ -38,6 +41,12 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
+  }
+
+  // Prevent the browser from caching authenticated pages so pressing back
+  // after sign-out doesn't show a stale logged-in page.
+  if (user) {
+    supabaseResponse.headers.set('Cache-Control', 'no-store')
   }
 
   return supabaseResponse
