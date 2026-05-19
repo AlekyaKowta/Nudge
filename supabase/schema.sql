@@ -112,10 +112,10 @@ create policy "Users can view their own todos"
   on public.todos for select
   using (auth.uid() = user_id);
 
-create policy "Friends can view shared completed todos"
+create policy "Friends can view shared todos"
   on public.todos for select
   using (
-    is_shared = true and completed = true and
+    is_shared = true and
     exists (
       select 1 from public.friendships
       where status = 'accepted'

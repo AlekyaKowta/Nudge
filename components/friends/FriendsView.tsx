@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { UserPlus, Check, X, UserX, Search } from 'lucide-react'
+import { UserPlus, Check, X, UserX, Search, LayoutList } from 'lucide-react'
+import Link from 'next/link'
 
 type PopulatedFriendship = Friendship & { requester: Profile; addressee: Profile }
 
@@ -173,13 +174,22 @@ export default function FriendsView({
                   <p className="text-sm font-medium">{friend.full_name}</p>
                   <p className="text-xs text-gray-500">@{friend.username}</p>
                 </div>
-                <button
-                  onClick={() => removeFriend(f.id)}
-                  className="p-1.5 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  title="Remove friend"
-                >
-                  <UserX className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <Link
+                    href={`/friends/${friend.id}`}
+                    className="p-1.5 rounded-md text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    title="View board"
+                  >
+                    <LayoutList className="h-4 w-4" />
+                  </Link>
+                  <button
+                    onClick={() => removeFriend(f.id)}
+                    className="p-1.5 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    title="Remove friend"
+                  >
+                    <UserX className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             )
           })}
