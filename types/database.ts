@@ -63,3 +63,42 @@ export type FeedItem = {
   profile: Profile
   todo: Todo
 }
+
+export type Group = {
+  id: string
+  name: string
+  admin_id: string
+  created_at: string
+  admin?: Profile
+  members?: GroupMember[]
+}
+
+export type GroupMember = {
+  id: string
+  group_id: string
+  user_id: string
+  joined_at: string
+  profile?: Profile
+}
+
+export type GroupTask = {
+  id: string
+  group_id: string
+  created_by: string
+  title: string
+  task_date: string
+  created_at: string
+  completions?: GroupTaskCompletion[]
+}
+
+export type GroupTaskCompletion = {
+  id: string
+  task_id: string
+  user_id: string
+  completed_at: string
+  profile?: Profile
+}
+
+export type GroupTaskWithCompletions = GroupTask & {
+  completions: (GroupTaskCompletion & { profile: Profile })[]
+}

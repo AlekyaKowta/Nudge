@@ -156,3 +156,122 @@ create policy "Users can send reminders to friends"
 
 create policy "Users can update their own reminders (mark read)"
   on public.reminders for update using (auth.uid() = receiver_id);
+
+-- ============================================================
+-- SHARED ACCOUNTABILITY GROUPS
+-- ============================================================
+
+create table public.groups (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  admin_id uuid references public.profiles(id) on delete cascade not null,
+  created_at timestamptz default now()
+);
+
+create table public.group_members (
+  id uuid default gen_random_uuid() primary key,
+  group_id uuid references public.groups(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  joined_at timestamptz default now(),
+  unique(group_id, user_id)
+);
+
+create table public.group_tasks (
+  id uuid default gen_random_uuid() primary key,
+  group_id uuid references public.groups(id) on delete cascade not null,
+  created_by uuid references public.profiles(id) on delete cascade not null,
+  title text not null,
+  task_date date not null default current_date,
+  created_at timestamptz default now()
+);
+
+create table public.group_task_completions (
+  id uuid default gen_random_uuid() primary key,
+  task_id uuid references public.group_tasks(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  completed_at timestamptz default now(),
+  unique(task_id, user_id)
+);
+
+alter table public.groups enable row level security;
+alter table public.group_members enable row level security;
+alter table public.group_tasks enable row level security;
+alter table public.group_task_completions enable row level security;
+
+create policy "Authenticated users can view all groups"
+  on public.groups for select using (auth.uid() is not null);
+create policy "Users can create groups"
+  on public.groups for insert with check (auth.uid() = admin_id);
+create policy "Admin can update group"
+  on public.groups for update using (auth.uid() = admin_id);
+create policy "Admin can delete group"
+  on public.groups for delete using (auth.uid() = admin_id);
+
+create policy "Authenticated users can view group membership"
+  on public.group_members for select using (auth.uid() is not null);
+create policy "Users can join groups or admin can add members"
+  on public.group_members for insert
+  with check (
+    auth.uid() = user_id
+    or exists (select 1 from public.groups where id = group_id and admin_id = auth.uid())
+  );
+create policy "Admin or self can remove members"
+  on public.group_members for delete
+  using (
+    auth.uid() = user_id
+    or exists (select 1 from public.groups where id = group_id and admin_id = auth.uid())
+  );
+
+create policy "Group members can view tasks"
+  on public.group_tasks for select
+  using (exists (select 1 from public.group_members where group_id = group_tasks.group_id and user_id = auth.uid()));
+create policy "Admin can create group tasks"
+  on public.group_tasks for insert
+  with check (
+    auth.uid() = created_by
+    and exists (select 1 from public.groups where id = group_id and admin_id = auth.uid())
+  );
+create policy "Admin can delete group tasks"
+  on public.group_tasks for delete
+  using (exists (select 1 from public.groups where id = group_id and admin_id = auth.uid()));
+
+create policy "Group members can view completions"
+  on public.group_task_completions for select
+  using (
+    exists (
+      select 1 from public.group_members gm
+      join public.group_tasks gt on gt.id = task_id
+      where gm.group_id = gt.group_id and gm.user_id = auth.uid()
+    )
+  );
+create policy "Members can insert own completion"
+  on public.group_task_completions for insert
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.group_members gm
+      join public.group_tasks gt on gt.id = task_id
+      where gm.group_id = gt.group_id and gm.user_id = auth.uid()
+    )
+  );
+create policy "Members can delete own completion"
+  on public.group_task_completions for delete using (auth.uid() = user_id);
+
+drop policy "Users can send reminders to friends" on public.reminders;
+create policy "Users can send reminders to friends or group members"
+  on public.reminders for insert
+  with check (
+    auth.uid() = sender_id and (
+      exists (
+        select 1 from public.friendships
+        where status = 'accepted'
+        and ((requester_id = auth.uid() and addressee_id = receiver_id)
+             or (addressee_id = auth.uid() and requester_id = receiver_id))
+      )
+      or exists (
+        select 1 from public.group_members gm1
+        join public.group_members gm2 on gm1.group_id = gm2.group_id
+        where gm1.user_id = auth.uid() and gm2.user_id = receiver_id
+      )
+    )
+  );

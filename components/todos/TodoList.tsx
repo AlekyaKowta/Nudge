@@ -103,7 +103,8 @@ export default function TodoList({ initialTodos, userId }: { initialTodos: Todo[
   }
 
   const pending = todos.filter(t => !t.completed)
-  const completed = todos.filter(t => t.completed)
+  const cutoff = new Date(Date.now() - 12 * 60 * 60 * 1000)
+  const completed = todos.filter(t => t.completed && t.completed_at && new Date(t.completed_at) > cutoff)
 
   return (
     <div className="space-y-6">

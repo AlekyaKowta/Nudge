@@ -11,6 +11,7 @@ import {
   ListTodo,
   Calendar,
   Users,
+  Users2,
   Bell,
   LogOut,
   Flame,
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/dashboard', label: 'Feed', icon: LayoutDashboard },
   { href: '/todos', label: 'My Todos', icon: ListTodo },
   { href: '/timetable', label: 'Timetable', icon: Calendar },
+  { href: '/groups', label: 'Groups', icon: Users2 },
   { href: '/friends', label: 'Friends', icon: Users },
   { href: '/notifications', label: 'Notifications', icon: Bell },
 ]
@@ -57,7 +59,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
             href={href}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-              pathname === href
+              (href === '/groups' ? pathname.startsWith('/groups') : pathname === href)
                 ? 'bg-indigo-50 text-indigo-700'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             )}
