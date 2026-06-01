@@ -7,10 +7,17 @@ export default async function FriendsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: friendships } = await supabase
-    .from('friendships')
-    .select('*, requester:profiles!requester_id(*), addressee:profiles!addressee_id(*)')
-    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+  const [{ data: friendships }, { data: allUsers }] = await Promise.all([
+    supabase
+      .from('friendships')
+      .select('*, requester:profiles!requester_id(*), addressee:profiles!addressee_id(*)')
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`),
+    supabase
+      .from('profiles')
+      .select('*')
+      .neq('id', user.id)
+      .order('full_name'),
+  ])
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
@@ -18,7 +25,7 @@ export default async function FriendsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Friends</h1>
         <p className="text-gray-500 mt-1">Connect with others and nudge each other forward.</p>
       </div>
-      <FriendsView initialFriendships={friendships ?? []} currentUserId={user.id} />
+      <FriendsView initialFriendships={friendships ?? []} currentUserId={user.id} allUsers={allUsers ?? []} />
     </div>
   )
 }

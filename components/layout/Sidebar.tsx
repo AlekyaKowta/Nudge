@@ -79,6 +79,7 @@ export default function Sidebar({ profile }: { profile: Profile | null }) {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{profile.full_name}</p>
+              <p className="text-xs text-indigo-500 truncate">@{profile.username}</p>
               <div className="flex items-center gap-1">
                 <Flame className="h-3 w-3 text-orange-500" />
                 <span className="text-xs text-gray-500">{profile.streak ?? 0} day streak</span>

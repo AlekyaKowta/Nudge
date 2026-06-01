@@ -17,9 +17,11 @@ type PopulatedFriendship = Friendship & { requester: Profile; addressee: Profile
 export default function FriendsView({
   initialFriendships,
   currentUserId,
+  allUsers,
 }: {
   initialFriendships: PopulatedFriendship[]
   currentUserId: string
+  allUsers: Profile[]
 }) {
   const [friendships, setFriendships] = useState<PopulatedFriendship[]>(initialFriendships)
   const [searchQuery, setSearchQuery] = useState('')
@@ -95,8 +97,39 @@ export default function FriendsView({
     return profile.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() ?? '?'
   }
 
+  const suggestions = allUsers.filter(u =>
+    !friendships.some(
+      f => f.requester_id === u.id || f.addressee_id === u.id
+    )
+  )
+
   return (
     <div className="space-y-6">
+      {/* People on Nudge */}
+      {suggestions.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm space-y-3">
+          <p className="text-sm font-medium text-gray-700">People on Nudge</p>
+          <div className="space-y-1">
+            {suggestions.map(profile => (
+              <div key={profile.id} className="flex items-center gap-3 py-2 border-t border-gray-50 first:border-t-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs">{getInitials(profile)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{profile.full_name}</p>
+                  <p className="text-xs text-gray-500">@{profile.username}</p>
+                </div>
+                <Button size="sm" onClick={() => sendRequest(profile.id)} className="bg-indigo-600 hover:bg-indigo-700 h-7 text-xs shrink-0">
+                  <UserPlus className="h-3 w-3 mr-1" />
+                  Add
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Search */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm space-y-3">
         <p className="text-sm font-medium text-gray-700">Find friends by username</p>
