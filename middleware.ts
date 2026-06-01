@@ -28,10 +28,17 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Routes that redirect logged-in users to dashboard
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/signup')
+    request.nextUrl.pathname.startsWith('/signup') ||
+    request.nextUrl.pathname.startsWith('/forgot-password')
 
-  if (!user && !isAuthRoute) {
+  // Routes that don't require authentication (but don't redirect logged-in users either)
+  const isPublicRoute = isAuthRoute ||
+    request.nextUrl.pathname.startsWith('/auth/') ||
+    request.nextUrl.pathname.startsWith('/reset-password')
+
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

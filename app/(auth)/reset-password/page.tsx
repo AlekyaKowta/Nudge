@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -10,18 +9,23 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
 
+    if (password !== confirm) {
+      toast.error('Passwords do not match')
+      return
+    }
+
+    setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
       toast.error(error.message)
@@ -29,8 +33,8 @@ export default function LoginPage() {
       return
     }
 
+    toast.success('Password updated successfully')
     router.push('/dashboard')
-    router.refresh()
   }
 
   return (
@@ -41,49 +45,40 @@ export default function LoginPage() {
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>Welcome back</CardTitle>
-            <CardDescription>Sign in to your account</CardDescription>
+            <CardTitle>Set new password</CardTitle>
+            <CardDescription>Choose a new password for your account</CardDescription>
           </CardHeader>
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link href="/forgot-password" className="text-xs text-indigo-600 hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
+                <Label htmlFor="password">New password</Label>
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  minLength={6}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm">Confirm password</Label>
+                <Input
+                  id="confirm"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  minLength={6}
                   required
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col gap-3">
+            <CardFooter>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign in'}
+                {loading ? 'Updating...' : 'Update password'}
               </Button>
-              <p className="text-sm text-gray-600 text-center">
-                Don&apos;t have an account?{' '}
-                <Link href="/signup" className="text-indigo-600 hover:underline font-medium">
-                  Sign up
-                </Link>
-              </p>
             </CardFooter>
           </form>
         </Card>
