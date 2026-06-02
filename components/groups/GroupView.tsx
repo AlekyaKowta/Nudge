@@ -152,6 +152,19 @@ export default function GroupView({
 
     if (error || !data) { toast.error('Failed to add task'); setAddingTask(false); return }
     setTasks(prev => [...prev, data as GroupTaskWithCompletions])
+
+    const otherMembers = members.filter(m => m.user_id !== currentUserId)
+    if (otherMembers.length > 0) {
+      await supabase.from('reminders').insert(
+        otherMembers.map(m => ({
+          sender_id: currentUserId,
+          receiver_id: m.user_id,
+          todo_id: null,
+          message: `New task in ${group.name}: "${newTaskTitle.trim()}"`,
+        }))
+      )
+    }
+
     setNewTaskTitle('')
     setAddingTask(false)
   }
