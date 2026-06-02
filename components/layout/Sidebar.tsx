@@ -28,7 +28,7 @@ const navItems = [
   { href: '/notifications', label: 'Notifications', icon: Bell },
 ]
 
-export default function Sidebar({ profile, unreadCount = 0 }: { profile: Profile | null; unreadCount?: number }) {
+export default function Sidebar({ profile, unreadCount = 0, incompleteGroupTasks = 0 }: { profile: Profile | null; unreadCount?: number; incompleteGroupTasks?: number }) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -69,6 +69,11 @@ export default function Sidebar({ profile, unreadCount = 0 }: { profile: Profile
             {href === '/notifications' && unreadCount > 0 && (
               <span className="ml-auto text-[10px] bg-indigo-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-4">
                 {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+            {href === '/groups' && incompleteGroupTasks > 0 && (
+              <span className="ml-auto text-[10px] bg-amber-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-4">
+                {incompleteGroupTasks > 99 ? '99+' : incompleteGroupTasks}
               </span>
             )}
           </Link>
