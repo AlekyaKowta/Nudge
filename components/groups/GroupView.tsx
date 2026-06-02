@@ -15,7 +15,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { ArrowLeft, ChevronLeft, ChevronRight, Bell, Trash2, Plus, Check } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Bell, Trash2, Plus, Check, CalendarPlus } from 'lucide-react'
 import Link from 'next/link'
 
 type PopulatedGroup = Group & { admin: Profile }
@@ -60,15 +60,55 @@ export default function GroupView({
 
   const isAdmin = group.admin_id === currentUserId
 
+  const taskSelect = '*, completions:group_task_completions(*, profile:profiles!user_id(*)), postponements:group_task_postponements(user_id, postponed_to, profile:profiles!user_id(*))'
+
   async function loadDate(date: string) {
-    const { data } = await supabase
-      .from('group_tasks')
-      .select('*, completions:group_task_completions(*, profile:profiles!user_id(*))')
-      .eq('group_id', group.id)
-      .eq('task_date', date)
-      .order('created_at', { ascending: true })
-    setTasks((data ?? []) as GroupTaskWithCompletions[])
+    const [{ data: regularData }, { data: postponedIds }] = await Promise.all([
+      supabase
+        .from('group_tasks')
+        .select(taskSelect)
+        .eq('group_id', group.id)
+        .eq('task_date', date)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('group_task_postponements')
+        .select('task_id')
+        .eq('postponed_to', date),
+    ])
+
+    const postponedTaskIds = (postponedIds ?? []).map((p: { task_id: string }) => p.task_id)
+    let postponedTasks: GroupTaskWithCompletions[] = []
+    if (postponedTaskIds.length > 0) {
+      const { data } = await supabase
+        .from('group_tasks')
+        .select(taskSelect)
+        .in('id', postponedTaskIds)
+        .eq('group_id', group.id)
+        .neq('task_date', date)
+      postponedTasks = (data ?? []) as unknown as GroupTaskWithCompletions[]
+    }
+
+    const regular = (regularData ?? []) as unknown as GroupTaskWithCompletions[]
+    const filtered = regular.filter(task => {
+      const mine = task.postponements?.find(p => p.user_id === currentUserId)
+      return !mine || mine.postponed_to === date
+    })
+    const existingIds = new Set(filtered.map(t => t.id))
+    setTasks([...filtered, ...postponedTasks.filter(t => !existingIds.has(t.id))])
     setCurrentDate(date)
+  }
+
+  async function postponeTask(task: GroupTaskWithCompletions) {
+    const nextDay = shiftDate(currentDate, 1)
+    const { error } = await supabase
+      .from('group_task_postponements')
+      .upsert(
+        { task_id: task.id, user_id: currentUserId, postponed_to: nextDay },
+        { onConflict: 'task_id,user_id' }
+      )
+    if (error) { toast.error('Failed to postpone'); return }
+    setTasks(prev => prev.filter(t => t.id !== task.id))
+    toast.success('Moved to tomorrow')
   }
 
   async function toggleCompletion(task: GroupTaskWithCompletions) {
@@ -95,6 +135,7 @@ export default function GroupView({
           ? { ...t, completions: [...t.completions, data as GroupTaskWithCompletions['completions'][number]] }
           : t
       ))
+      await fetch('/api/streak', { method: 'POST' })
     }
   }
 
@@ -106,7 +147,7 @@ export default function GroupView({
     const { data, error } = await supabase
       .from('group_tasks')
       .insert({ group_id: group.id, created_by: currentUserId, title: newTaskTitle.trim(), task_date: currentDate })
-      .select('*, completions:group_task_completions(*, profile:profiles!user_id(*))')
+      .select(taskSelect)
       .single()
 
     if (error || !data) { toast.error('Failed to add task'); setAddingTask(false); return }
@@ -160,11 +201,11 @@ export default function GroupView({
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {members.map(m => (
           <div key={m.id} className="flex flex-col items-center gap-1 shrink-0">
-            <Avatar className={`h-9 w-9 ${m.user_id === currentUserId ? 'ring-2 ring-indigo-400 ring-offset-1' : ''}`}>
+            <Avatar className="h-9 w-9">
               <AvatarImage src={m.profile.avatar_url ?? undefined} />
               <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs">{initials(m.profile)}</AvatarFallback>
             </Avatar>
-            <span className="text-[10px] text-gray-500 max-w-[52px] truncate text-center">
+            <span className={`text-[10px] max-w-[52px] truncate text-center font-medium ${m.user_id === currentUserId ? 'text-indigo-500' : 'text-gray-400'}`}>
               {m.user_id === currentUserId ? 'You' : m.profile.full_name?.split(' ')[0]}
             </span>
           </div>
@@ -214,9 +255,30 @@ export default function GroupView({
                 >
                   {myDone && <Check className="h-2.5 w-2.5" />}
                 </button>
-                <p className={`flex-1 text-sm font-medium ${myDone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                  {task.title}
-                </p>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${myDone ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                    {task.title}
+                  </p>
+                  {task.postponements && task.postponements.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {task.postponements.map(p => (
+                        <span key={p.user_id} className="inline-flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                          <CalendarPlus className="h-2.5 w-2.5" />
+                          {p.profile?.full_name?.split(' ')[0] ?? 'Someone'} postponed
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {!myDone && (
+                  <button
+                    onClick={() => postponeTask(task)}
+                    className="p-1 rounded text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                    title="Move to tomorrow"
+                  >
+                    <CalendarPlus className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 {isAdmin && (
                   <button
                     onClick={() => deleteTask(task.id)}

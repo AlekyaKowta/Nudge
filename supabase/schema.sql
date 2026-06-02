@@ -194,10 +194,20 @@ create table public.group_task_completions (
   unique(task_id, user_id)
 );
 
+create table public.group_task_postponements (
+  id uuid default gen_random_uuid() primary key,
+  task_id uuid references public.group_tasks(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  postponed_to date not null,
+  created_at timestamptz default now(),
+  unique(task_id, user_id)
+);
+
 alter table public.groups enable row level security;
 alter table public.group_members enable row level security;
 alter table public.group_tasks enable row level security;
 alter table public.group_task_completions enable row level security;
+alter table public.group_task_postponements enable row level security;
 
 create policy "Authenticated users can view all groups"
   on public.groups for select using (auth.uid() is not null);
@@ -257,6 +267,23 @@ create policy "Members can insert own completion"
   );
 create policy "Members can delete own completion"
   on public.group_task_completions for delete using (auth.uid() = user_id);
+
+create policy "Group members can view postponements"
+  on public.group_task_postponements for select
+  using (
+    exists (
+      select 1 from public.group_members gm
+      join public.group_tasks gt on gt.id = task_id
+      where gm.group_id = gt.group_id and gm.user_id = auth.uid()
+    )
+  );
+create policy "Members can insert own postponement"
+  on public.group_task_postponements for insert
+  with check (auth.uid() = user_id);
+create policy "Members can update own postponement"
+  on public.group_task_postponements for update using (auth.uid() = user_id);
+create policy "Members can delete own postponement"
+  on public.group_task_postponements for delete using (auth.uid() = user_id);
 
 drop policy "Users can send reminders to friends" on public.reminders;
 create policy "Users can send reminders to friends or group members"

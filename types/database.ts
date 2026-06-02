@@ -82,6 +82,12 @@ export type GroupMember = {
   profile?: Profile
 }
 
+export type GroupTaskPostponement = {
+  user_id: string
+  postponed_to: string
+  profile?: Profile
+}
+
 export type GroupTask = {
   id: string
   group_id: string
@@ -90,6 +96,7 @@ export type GroupTask = {
   task_date: string
   created_at: string
   completions?: GroupTaskCompletion[]
+  postponements?: GroupTaskPostponement[]
 }
 
 export type GroupTaskCompletion = {
@@ -102,4 +109,5 @@ export type GroupTaskCompletion = {
 
 export type GroupTaskWithCompletions = GroupTask & {
   completions: (GroupTaskCompletion & { profile: Profile })[]
+  postponements: GroupTaskPostponement[]
 }
