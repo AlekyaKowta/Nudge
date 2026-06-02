@@ -8,6 +8,7 @@ create table public.profiles (
   avatar_url text,
   bio text,
   streak int default 0,
+  points int default 0,
   last_activity_date date,
   created_at timestamptz default now()
 );

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import FeedItem from '@/components/feed/FeedItem'
-import { Flame, Users } from 'lucide-react'
+import { Flame, Users, Trophy, Star } from 'lucide-react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -48,19 +48,58 @@ export default async function DashboardPage() {
         <p className="text-gray-500 mt-1">Here&apos;s what your friends have been up to.</p>
       </div>
 
-      {profile && (
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-5 mb-8 text-white">
-          <div className="flex items-center gap-3">
-            <div className="bg-white/20 rounded-lg p-2">
-              <Flame className="h-6 w-6" />
+      {profile && (() => {
+        const points = profile.points ?? 0
+        const isPrizeDay = points > 0 && points % 1000 === 0
+        const progress = isPrizeDay ? 100 : (points % 1000) / 10
+
+        if (isPrizeDay) {
+          return (
+            <div className="bg-gradient-to-r from-yellow-400 to-amber-500 rounded-xl p-5 mb-8 text-white">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 rounded-lg p-2">
+                  <Trophy className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-lg">Prize Day! {points.toLocaleString()} points</p>
+                  <p className="text-yellow-100 text-sm">You hit a milestone — time to celebrate!</p>
+                </div>
+                <Star className="h-5 w-5 text-white/70" />
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-5 mb-8 text-white">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="bg-white/20 rounded-lg p-2">
+                <Flame className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-lg">{profile.streak ?? 0}-day streak</p>
+                <p className="text-indigo-100 text-sm">Keep completing tasks to maintain it!</p>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-lg">{points.toLocaleString()}</p>
+                <p className="text-indigo-100 text-xs">points</p>
+              </div>
             </div>
             <div>
-              <p className="font-semibold text-lg">{profile.streak ?? 0}-day streak</p>
-              <p className="text-indigo-100 text-sm">Keep completing tasks to maintain it!</p>
+              <div className="flex justify-between text-xs text-indigo-200 mb-1">
+                <span>{points % 1000} / 1000 to next Prize Day</span>
+                <span>{Math.floor(points / 1000) > 0 ? `${Math.floor(points / 1000)} milestone${Math.floor(points / 1000) > 1 ? 's' : ''} reached` : ''}</span>
+              </div>
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-white/70 rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {feedItems && feedItems.length > 0 ? (
         <div className="space-y-3">

@@ -5,6 +5,7 @@ export type Profile = {
   avatar_url: string | null
   bio: string | null
   streak: number
+  points: number
   last_activity_date: string | null
   created_at: string
 }
