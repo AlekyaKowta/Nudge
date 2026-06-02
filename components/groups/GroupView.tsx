@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Group, GroupMember, GroupTaskWithCompletions, Profile } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -57,6 +58,7 @@ export default function GroupView({
   const [nudgeMessage, setNudgeMessage] = useState('')
   const [nudgeSending, setNudgeSending] = useState(false)
   const supabase = createClient()
+  const router = useRouter()
 
   const isAdmin = group.admin_id === currentUserId
 
@@ -137,6 +139,7 @@ export default function GroupView({
       ))
       await fetch('/api/streak', { method: 'POST' })
     }
+    router.refresh()
   }
 
   async function addTask(e: React.FormEvent) {
