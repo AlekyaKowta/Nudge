@@ -7,6 +7,8 @@ export default async function GroupsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const today = new Date().toISOString().split('T')[0]
+
   const [{ data: groups }, { data: friendships }] = await Promise.all([
     supabase
       .from('groups')
@@ -19,6 +21,24 @@ export default async function GroupsPage() {
       .eq('status', 'accepted'),
   ])
 
+  const myGroupIds = (groups ?? [])
+    .filter(g => g.members.some((m: { user_id: string }) => m.user_id === user.id))
+    .map(g => g.id)
+
+  const incompleteByGroup: Record<string, number> = {}
+  if (myGroupIds.length > 0) {
+    const [{ data: todayTasks }, { data: myCompletions }] = await Promise.all([
+      supabase.from('group_tasks').select('id, group_id').in('group_id', myGroupIds).eq('task_date', today),
+      supabase.from('group_task_completions').select('task_id').eq('user_id', user.id),
+    ])
+    const completedIds = new Set((myCompletions ?? []).map((c: { task_id: string }) => c.task_id))
+    for (const task of (todayTasks ?? [])) {
+      if (!completedIds.has(task.id)) {
+        incompleteByGroup[task.group_id] = (incompleteByGroup[task.group_id] ?? 0) + 1
+      }
+    }
+  }
+
   return (
     <div className="p-8 max-w-3xl mx-auto">
       <div className="mb-8">
@@ -29,6 +49,7 @@ export default async function GroupsPage() {
         initialGroups={groups ?? []}
         friendships={friendships ?? []}
         currentUserId={user.id}
+        incompleteByGroup={incompleteByGroup}
       />
     </div>
   )

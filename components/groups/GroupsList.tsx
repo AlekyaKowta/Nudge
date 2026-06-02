@@ -40,10 +40,12 @@ export default function GroupsList({
   initialGroups,
   friendships,
   currentUserId,
+  incompleteByGroup = {},
 }: {
   initialGroups: PopulatedGroup[]
   friendships: PopulatedFriendship[]
   currentUserId: string
+  incompleteByGroup?: Record<string, number>
 }) {
   const [groups, setGroups] = useState<PopulatedGroup[]>(initialGroups)
   const [open, setOpen] = useState(false)
@@ -186,7 +188,7 @@ export default function GroupsList({
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">My Groups</h2>
           <div className="grid gap-3">
             {myGroups.map(g => (
-              <GroupCard key={g.id} group={g} isAdmin={g.admin_id === currentUserId}>
+              <GroupCard key={g.id} group={g} isAdmin={g.admin_id === currentUserId} incompleteTasks={incompleteByGroup[g.id] ?? 0}>
                 <Link href={`/groups/${g.id}`}>
                   <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">View</Button>
                 </Link>
@@ -231,10 +233,12 @@ export default function GroupsList({
 function GroupCard({
   group,
   isAdmin,
+  incompleteTasks = 0,
   children,
 }: {
   group: PopulatedGroup
   isAdmin: boolean
+  incompleteTasks?: number
   children: React.ReactNode
 }) {
   const count = memberCount(group)
@@ -250,6 +254,11 @@ function GroupCard({
           <p className="text-sm font-semibold text-gray-900 truncate">{group.name}</p>
           {isAdmin && (
             <span className="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-medium">Admin</span>
+          )}
+          {incompleteTasks > 0 && (
+            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">
+              {incompleteTasks} task{incompleteTasks > 1 ? 's' : ''} today
+            </span>
           )}
         </div>
         <div className="flex items-center gap-1 mt-0.5">
