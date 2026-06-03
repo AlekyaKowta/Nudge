@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -28,9 +29,32 @@ const navItems = [
   { href: '/notifications', label: 'Notifications', icon: Bell },
 ]
 
-export default function Sidebar({ profile, unreadCount = 0, incompleteGroupTasks = 0 }: { profile: Profile | null; unreadCount?: number; incompleteGroupTasks?: number }) {
+export default function Sidebar({ profile, unreadCount = 0, currentUserId }: { profile: Profile | null; unreadCount?: number; currentUserId: string }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [incompleteGroupTasks, setIncompleteGroupTasks] = useState(0)
+
+  useEffect(() => {
+    const supabase = createClient()
+    const localToday = new Date().toLocaleDateString('en-CA')
+
+    async function fetchIncomplete() {
+      const { data: memberships } = await supabase
+        .from('group_members').select('group_id').eq('user_id', currentUserId)
+      const groupIds = (memberships ?? []).map((m: { group_id: string }) => m.group_id)
+      if (groupIds.length === 0) return
+
+      const [{ data: todayTasks }, { data: done }] = await Promise.all([
+        supabase.from('group_tasks').select('id').in('group_id', groupIds).eq('task_date', localToday),
+        supabase.from('group_task_completions').select('task_id').eq('user_id', currentUserId),
+      ])
+      const doneIds = new Set((done ?? []).map((c: { task_id: string }) => c.task_id))
+      const count = (todayTasks ?? []).filter(t => !doneIds.has(t.id)).length
+      setIncompleteGroupTasks(count)
+    }
+
+    fetchIncomplete()
+  }, [currentUserId, pathname])
 
   async function handleLogout() {
     const supabase = createClient()
