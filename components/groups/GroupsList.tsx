@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Group, Friendship, Profile } from '@/types/database'
 import { Button } from '@/components/ui/button'
@@ -40,20 +40,44 @@ export default function GroupsList({
   initialGroups,
   friendships,
   currentUserId,
-  incompleteByGroup = {},
 }: {
   initialGroups: PopulatedGroup[]
   friendships: PopulatedFriendship[]
   currentUserId: string
-  incompleteByGroup?: Record<string, number>
 }) {
   const [groups, setGroups] = useState<PopulatedGroup[]>(initialGroups)
+  const [incompleteByGroup, setIncompleteByGroup] = useState<Record<string, number>>({})
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [joiningId, setJoiningId] = useState<string | null>(null)
   const supabase = createClient()
+
+  useEffect(() => {
+    const localToday = new Date().toLocaleDateString('en-CA')
+    const myGroupIds = groups
+      .filter(g => g.members.some(m => m.user_id === currentUserId))
+      .map(g => g.id)
+    if (myGroupIds.length === 0) return
+
+    async function fetchCounts() {
+      const [{ data: todayTasks }, { data: myCompletions }] = await Promise.all([
+        supabase.from('group_tasks').select('id, group_id').in('group_id', myGroupIds).eq('task_date', localToday),
+        supabase.from('group_task_completions').select('task_id').eq('user_id', currentUserId),
+      ])
+      const completedIds = new Set((myCompletions ?? []).map(c => c.task_id))
+      const counts: Record<string, number> = {}
+      for (const task of (todayTasks ?? [])) {
+        if (!completedIds.has(task.id)) {
+          counts[task.group_id] = (counts[task.group_id] ?? 0) + 1
+        }
+      }
+      setIncompleteByGroup(counts)
+    }
+    fetchCounts()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups])
 
   const friends = friendships.map(f => getFriend(f, currentUserId))
   const myGroups = groups.filter(g => g.members.some(m => m.user_id === currentUserId))
