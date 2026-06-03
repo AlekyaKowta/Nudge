@@ -9,8 +9,9 @@ export default async function GroupPage({ params, searchParams }: {
 }) {
   const { id: groupId } = await params
   const { date: dateParam } = await searchParams
-  const today = new Date().toISOString().split('T')[0]
-  const selectedDate = dateParam ?? today
+  // Fall back to UTC today only when a date is explicitly provided via URL.
+  // When no date param exists, GroupView will use the client's local date instead.
+  const selectedDate = dateParam ?? new Date().toISOString().split('T')[0]
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Group, GroupMember, GroupTaskWithCompletions, Profile } from '@/types/database'
@@ -50,8 +50,20 @@ export default function GroupView({
   initialDate: string
   currentUserId: string
 }) {
+  // Use client's local date to avoid UTC server timezone mismatch
+  const clientToday = typeof window !== 'undefined'
+    ? new Date().toLocaleDateString('en-CA')
+    : initialDate
+
   const [tasks, setTasks] = useState<GroupTaskWithCompletions[]>(initialTasks)
   const [currentDate, setCurrentDate] = useState(initialDate)
+
+  useEffect(() => {
+    if (currentDate !== clientToday) {
+      loadDate(clientToday)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [addingTask, setAddingTask] = useState(false)
   const [nudgeTarget, setNudgeTarget] = useState<{ taskTitle: string; member: Profile } | null>(null)
